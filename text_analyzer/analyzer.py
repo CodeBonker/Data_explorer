@@ -2,6 +2,7 @@ import string
 import re
 from nltk.corpus import stopwords
 from collections import Counter
+import matplotlib.pyplot as plt
 
 
 class TextAnalyzer:
@@ -84,3 +85,25 @@ class TextAnalyzer:
         tokens = self.tokenize()
         word_counts = Counter(tokens)
         return word_counts.most_common(n)
+    
+
+    def plot_word_frequency(self, n=10):
+        """
+        Plots a bar chart of the n most common words
+        """
+        freq_data = self.get_word_frequency(n)
+
+        if not freq_data:
+            print("No data to plot")
+            return
+
+        words, counts = zip(*freq_data)
+
+        plt.figure(figsize=(8, 5))
+        plt.bar(words, counts, color='skyblue')
+        plt.title(f"Top {n} Most Common Words")
+        plt.xlabel("Words")
+        plt.ylabel("Frequency")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
