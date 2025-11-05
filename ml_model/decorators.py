@@ -8,6 +8,7 @@ logging.basicConfig(
     format = "%(asctime)s - %(levelname)s - %(message)s"
 )
 
+from ml_model.exceptions import MLException
 
 def log_time(func):
     """
@@ -17,6 +18,7 @@ def log_time(func):
     def wrapper(*args, **kwargs):
         start = time.time()
         logging.info(f" starting '{func.__name__}'...")
+
         try:
             result = func(*args, **kwargs)
             elapsed = time.time() - start
@@ -38,18 +40,24 @@ def handle_errors(func):
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
+
         try:
             return func(*args, **kwargs)
-        except FileNotFoundError:
-            print("File not found. Check the dataset path.")
-            logging.exception("FileNotFoundError occurred.")
-        except ValueError as ve:
-            print(f"Value Error: {ve}")
-            logging.exception("ValueError occurred.")
-        except Exception as e:
-            print(f"Unexpected Error: {e}")
-            logging.exception("Unexpected Error occurred.")
+        
+        except MLException as mle:
+            print(f"{mle.message}")
+            logging.warning(f"MLException in '{func.__name__}': {mle.message}")
+            logging.exception(mle)
+            raise
+
+        except Exception as e:      # for the generic/unknown error
+            print(f"Unexpected error in '{func.__name__}': {str(e)}")
+            logging.error(f"Unexpected error in '{func.__name__}': {e}")
+            logging.exception(e)
+            raise
+
     return wrapper
+
 
 
 
@@ -63,4 +71,5 @@ def log_action(func):
         result = func(*args, **kwargs)
         logging.info(f"Exiting: {func.__name__}")
         return result
+    
     return wrapper
