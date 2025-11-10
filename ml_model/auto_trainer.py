@@ -16,6 +16,8 @@ from sklearn.svm import SVC, SVR
 from sklearn.linear_model import LogisticRegression, LinearRegression
 
 from sklearn.preprocessing import LabelEncoder
+from ml_model.data_preprocessor import DataPreprocessor
+
 
 MODEL_MAP = {
     "LogisticRegression": LogisticRegression,
@@ -48,8 +50,12 @@ class AutoTrainer:
         self.results = []
 
     def train_and_evaluate(self, test_size: float = 0.2, random_state: int = 42):
-        X = self.df.drop(self.target, axis=1)
-        y = self.df[self.target]
+        preprocessor = DataPreprocessor(self.df, self.target)
+        X, y, prep_report = preprocessor.run()
+        print("Preprocessing Report:", prep_report)
+        print("Non-numeric columns after preprocessing:")
+        print([col for col in X.columns if not np.issubdtype(X[col].dtype, np.number)])
+
 
         categorical_cols = X.select_dtypes(include=['object', 'category']).columns
 
