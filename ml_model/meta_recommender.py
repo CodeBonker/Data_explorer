@@ -48,29 +48,33 @@ class MetaLogger:
     @staticmethod
     def log_run(meta_features: dict, model_results: pd.DataFrame):
         """Append run data to meta log file with dataset+model uniqueness check"""
-        
+
+        os.makedirs(os.path.dirname(META_LOG_PATH), exist_ok=True)
         meta_records = []
 
         for _, row in model_results.iterrows():
             record = meta_features.copy()
-
-            # Create a dataset+model hash to ensure unique entries
+        
             unique_string = json.dumps(meta_features, sort_keys=True) + row["model"]
             record["dataset_model_id"] = hashlib.md5(unique_string.encode()).hexdigest()
-
             record["model_name"] = row["model"]
             record["accuracy"] = row["accuracy"]
             meta_records.append(record)
 
         df_new = pd.DataFrame(meta_records)
 
+        # If file exists load and check integrity
         if os.path.exists(META_LOG_PATH):
             df_old = pd.read_csv(META_LOG_PATH)
-
-            # Remove any existing entries with same dataset+model ID
-            df_old = df_old[~df_old["dataset_model_id"].isin(df_new["dataset_model_id"])]
+            if "dataset_model_id" not in df_old.columns:
+                print("[MetaLogger] Old log missing dataset_model_id — reinitializing it.")
+                df_old = pd.DataFrame(columns=df_new.columns)
+            else:
+                # Remove duplicates based on dataset_model_id
+                df_old = df_old[~df_old["dataset_model_id"].isin(df_new["dataset_model_id"])]
             df_all = pd.concat([df_old, df_new], ignore_index=True)
         else:
+            print("[MetaLogger] Creating new meta log file.")
             df_all = df_new
 
         df_all.to_csv(META_LOG_PATH, index=False)
