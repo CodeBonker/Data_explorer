@@ -6,7 +6,7 @@ class DataExplorer:
     """
     Class for loading and exploring tabular data
     """
-
+    
     def __init__(self, file_path: str):
         self.file_path = file_path
         self.data = None
