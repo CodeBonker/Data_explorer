@@ -49,7 +49,7 @@ class DataExplorer:
         try:
             return self.data[columns]
         except KeyError as e:
-            print(f"Invalid column name/s: {e}")
+            print(f"Invalid column n          ame/s: {e}")
             return None
         
     def filter_data(self, condition):
@@ -73,25 +73,3 @@ class DataExplorer:
             print(f"Error during grouping: {e}")
             return None
         
-
-
-    def visualize_data(self):
-
-        if self.data is None:
-            self.load_data()
-    
-        # Distribution of Age
-        self.data["Age"].plot(kind="hist", bins=10, title="Age Distribution", color="skyblue", edgecolor="black")
-        plt.xlabel("Age")
-        plt.ylabel("Count")
-        plt.show()
-
-        # Average Leave Rate by City
-        leave_rate = self.data.groupby("City")["LeaveOrNot"].mean()
-        leave_rate.plot(kind="bar", color="coral", title="Average Leave Rate by City")
-        plt.ylabel("Leave Rate (0-1)")
-        plt.show()
-
-        # Age vs Experience
-        self.data.plot(kind="scatter", x="Age", y="ExperienceInCurrentDomain", color="green", title="Age vs Experience")
-        plt.show()
