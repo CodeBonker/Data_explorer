@@ -17,7 +17,7 @@ class DataPreprocessor:
         self.numeric_features = []
         self.datetime_features = []
 
-    def inspect_column_type(self):
+    def inspect_column_types(self):
         """Detect inconsistent or mixed-type columns and log conversion actions"""
         type_summary = {}
         conversion_actions = []
