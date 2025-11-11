@@ -92,82 +92,73 @@ class MetaLogger:
         
 class MetaRecommender:
     """
-    Learns from past runs, save the result for future use and 
-    continuously improve as new data is logged and recommend based on that
-    
+    Learns from past runs, saves the result for future use, 
+    and continuously improves as new data is logged
     """
     def __init__(self):
         self.meta_model = None
         self.last_trained_rows = 0
-        
         self._load_model_if_exists()
 
     def _load_model_if_exists(self):
         """Load saved meta-model and its info if available"""
         if os.path.exists(META_MODEL_PATH):
             self.meta_model = joblib.load(META_MODEL_PATH)
-            print(f"loaded existing meta-model from {META_MODEL_PATH}")
+            print(f"Loaded existing meta-model from {META_MODEL_PATH}")
 
-            if os.path.exists(META_INFO_PATH):  # meta info load karne ke liye
-                import json
+            if os.path.exists(META_INFO_PATH):
                 with open(META_INFO_PATH, "r") as f:
                     info = json.load(f)
                     self.last_trained_rows = info.get("last_trained_rows", 0)
-                    print(f" Last trained on {self.last_trained_rows} meta-records.")
+                    print(f"Last trained on {self.last_trained_rows} meta-records.")
         else:
-            print("No previous meta-model found. Will start new from the scratch")
-
+            print("No previous meta-model found. Starting from scratch.")
 
     def train_or_update(self, logs: pd.DataFrame):
         """Train or update the meta-model only when new logs appear"""
         if logs.empty:
             print("No logs available to train meta-model")
             return
-        
-        if len(logs) <= self.last_trained_rows:         
-            print (" Meta model already upto date. No new logs to learn from")
+
+        if len(logs) <= self.last_trained_rows:
+            print("Meta-model already up to date. No new logs to learn from.")
             return
-        
-        else:
-            print ("TRAINING OR UPDATING META-MODEL WITH NEW LOGS.....")
-            
-            X = logs.drop(columns=["model_name", "accuracy"])
-            y = logs["accuracy"]
 
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-            
-            model = RandomForestRegressor(random_state=42)
-            model.fit(X_train, y_train)
-            preds = model.predict(X_test)
-            score = r2_score(y_test, preds)
-            print(f"Meta-model trained. R² = {round(score, 3)}")
-    
+        print("Training or updating meta-model with new logs...")
 
-        # now save model and meta info
+        non_numeric_cols = [col for col in logs.columns if not np.issubdtype(logs[col].dtype, np.number)]
+        if non_numeric_cols:
+            print(f"Dropping non-numeric columns: {non_numeric_cols}")
+            logs = logs.drop(columns=non_numeric_cols)
+
+        X = logs.drop(columns=["accuracy"], errors="ignore")
+        y = logs["accuracy"]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        model = RandomForestRegressor(random_state=42)
+        model.fit(X_train, y_train)
+
+        preds = model.predict(X_test)
+        score = r2_score(y_test, preds)
+        print(f"Meta-model trained. R² = {round(score, 3)}")
+
+        # Save model and metadata
         joblib.dump(model, META_MODEL_PATH)
         self.meta_model = model
         self.last_trained_rows = len(logs)
         self._save_meta_info()
         print(f"Saved updated meta-model to {META_MODEL_PATH}")
 
-
     def _save_meta_info(self):
-
-        import json
         info = {
             "last_trained_rows": self.last_trained_rows,
             "last_trained_at": datetime.now().isoformat()
         }
-
         with open(META_INFO_PATH, "w") as f:
             json.dump(info, f, indent=2)
 
-
-
     def predict_best_models(self, df: pd.DataFrame, target: str, model_list: list, extractor):
-
         """Use the trained meta-model to predict likely best models"""
-
         if self.meta_model is None:
             print("No trained meta-model found. Train it first using train_or_update()")
             return
@@ -175,8 +166,10 @@ class MetaRecommender:
         meta_features = extractor.extract(df, target)
         feature_df = pd.DataFrame([meta_features] * len(model_list))
         feature_df["model_name"] = model_list
-        preds = self.meta_model.predict(feature_df.drop(columns=["model_name"]))
-        
+
+        feature_df = feature_df.select_dtypes(include=[np.number])
+
+        preds = self.meta_model.predict(feature_df)
         results = pd.DataFrame({
             "model_name": model_list,
             "predicted_accuracy": np.round(preds, 3)
